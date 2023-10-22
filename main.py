@@ -1,20 +1,24 @@
 import math
+import os.path
 import sys
 import time
 
 import numpy as np
 from PIL import Image
-from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtGui import QPixmap, QImage, QDoubleValidator
 from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QLabel, QApplication, QPushButton, QFileDialog
 from PyQt5.uic import loadUi
 from matplotlib import pyplot as plt
-from pybrain3 import FeedForwardNetwork, RecurrentNetwork
+from pybrain3 import FeedForwardNetwork, RecurrentNetwork, BiasUnit, FullConnection, LinearLayer, SigmoidLayer
 from pybrain3.supervised import BackpropTrainer
 from pybrain3.tools.shortcuts import buildNetwork
 from pybrain3.datasets.supervised import SupervisedDataSet
+from pybrain3 import FeedForwardNetwork
 from PyQt5 import QtCore as qtc
 import pickle
 
+
+__VERSION__ = "2.0.1"
 
 def createDataSet(rgb_src, gray_src):
     print("---- createDataSet ----")
@@ -70,7 +74,7 @@ class MainWindow(QMainWindow):  # главное окно
         # self.setupUi()
 
         self.net_name = None
-        loadUi("color_restavration.ui", self)
+        loadUi("ui/color_restavration.ui", self)
 
         self.graphic_view = self.findChild(QLabel, "ImageBeforeView")
         self.graphic_view2 = self.findChild(QLabel, "ImageAfterView")
@@ -86,9 +90,17 @@ class MainWindow(QMainWindow):  # главное окно
         self.create_new_net.submitClicked.connect(self.onNewNetNameConfirm)
         self.create_new_net.show()
 
-    def onNewNetNameConfirm(self, name):
-        self.net_name = name + ".txt"
-        startTraining(self.image_rgb_file_name, self.input_image_file_name, 10, self.net_name)
+    def onNewNetNameConfirm(self, name, learning_rate,epochs):
+        if not name:
+            self.net_name = "color_restovration_neuro_net_model.txt"
+        else:
+            self.net_name = name + ".txt"
+
+        print("name:", name)
+        print("learning_rate:",learning_rate)
+        print("learning epochs count:",epochs)
+
+        startTraining(self.image_rgb_file_name, self.input_image_file_name, epochs, self.net_name, learning_rate)
 
     def startNet(self):
         print("---- startNet ----")
@@ -102,6 +114,10 @@ class MainWindow(QMainWindow):  # главное окно
         print(f'newFileName={newFileName}')
         if not self.net_name:
             self.net_name = self.selectNet()
+        elif not self.net_name.index("."):
+            self.net_name = "neuralNetworks/v" + __VERSION__ + self.net_name + ".txt"
+
+
         runNet(self.input_image_file_name, newFileName, self.net_name)
 
         image_qt = QImage(newFileName)
@@ -146,17 +162,17 @@ class MainWindow(QMainWindow):  # главное окно
 
 
 class CreateNewNetWindow(QMainWindow):  # окно добавления новой сети
-    submitClicked = qtc.pyqtSignal(str)
+    submitClicked = qtc.pyqtSignal(str, float,int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         # self.setupUi()
 
-        loadUi("create_new_net_window.ui", self)
+        loadUi("ui/create_new_net_window.ui", self)
         self.create_button.clicked.connect(self.confirm)
 
     def confirm(self):
-        self.submitClicked.emit(self.nameTextBox.text())
+        self.submitClicked.emit(self.nameTextBox.text(),self.learning_rate.value(),self.epochs_count.value())
         self.close()
 
 
@@ -235,17 +251,55 @@ def prepareData(img: Image):
     return data
 
 
-def startTraining(rgb: str, gray: str, epochs: int, net_name: str):
+def buildMyNetwork():
+    nn = FeedForwardNetwork()
+
+    bias = BiasUnit()
+    inLayer = LinearLayer(100)
+    hidden_layer1 = SigmoidLayer(200)
+    hidden_layer2 = SigmoidLayer(200)
+    outLayer = LinearLayer(300)
+
+    bias.name = 'bias'
+    inLayer.name = 'in'
+    hidden_layer1.name = 'hidden1'
+    hidden_layer2.name = 'hidden2'
+    outLayer.name = 'out'
+
+    nn.addInputModule(inLayer)
+    nn.addModule(bias)
+    nn.addModule(hidden_layer1)
+    nn.addModule(hidden_layer2)
+    nn.addOutputModule(outLayer)
+
+    nn.addConnection(FullConnection(inLayer, hidden_layer1))
+    nn.addConnection(FullConnection(hidden_layer1, hidden_layer2))
+    nn.addConnection(FullConnection(hidden_layer2, outLayer))
+
+    bias_to_hidden1 = FullConnection(bias, hidden_layer1)
+    bias_to_hidden2 = FullConnection(bias, hidden_layer2)
+    bias_to_out = FullConnection(bias, outLayer)
+    nn.addConnection(bias_to_hidden1)
+    nn.addConnection(bias_to_hidden2)
+    nn.addConnection(bias_to_out)
+
+    nn.sortModules()
+
+    return nn
+
+
+def startTraining(rgb: str, gray: str, epochs: int, net_name: str, learning_rate: float):
     print("---- startTraining ----")
-    net = buildNetwork(100, 1, 300)
+    # net = buildNetwork(100, 3, 300)
+    net = buildMyNetwork()
+    print(net)
     ds = createDataSet(rgb, gray)
 
     # y = net.activate()
     # print("Y= ", y)
-    print(net)
     # printNetParameters(net)
 
-    tranier = BackpropTrainer(net, ds)
+    tranier = BackpropTrainer(module=net, dataset=ds, learningrate=learning_rate)
 
     # trnerr, valerr = tranier.trainUntilConvergence(dataset=ds, maxEpochs=10, continueEpochs=5)
 
@@ -267,7 +321,10 @@ def startTraining(rgb: str, gray: str, epochs: int, net_name: str):
 
 
 def saveNetToFile(fileName, net):
-    fileObject = open(fileName, 'wb')
+    if not os.path.exists("neuralNetworks/v" + __VERSION__):
+        os.makedirs("neuralNetworks/v" + __VERSION__)
+
+    fileObject = open("neuralNetworks/v" + __VERSION__ + "/" + fileName, 'wb')
     pickle.dump(net, fileObject)
     fileObject.close()
     print("Successfully saved network to ", fileName)
