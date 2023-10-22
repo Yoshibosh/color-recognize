@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>611</height>
+    <width>1052</width>
+    <height>790</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,33 +18,54 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>10</y>
-      <width>731</width>
-      <height>541</height>
+      <y>0</y>
+      <width>1031</width>
+      <height>751</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QPushButton" name="pushButton_2">
+      <widget class="QPushButton" name="startLearnButton">
+       <property name="text">
+        <string>Обучить сеть</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="startImageProcessing">
        <property name="text">
         <string>Запустить сеть</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="loadImage">
        <property name="text">
-        <string>Провести обучение</string>
+        <string>Выбрать фотографию для преобразования</string>
        </property>
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
-        <widget class="QGraphicsView" name="graphicsView_2"/>
+        <widget class="QLabel" name="ImageBeforeView">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="scaledContents">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
        <item>
-        <widget class="QGraphicsView" name="graphicsView"/>
+        <widget class="QLabel" name="ImageAfterView">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="scaledContents">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -56,7 +77,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>1052</width>
      <height>21</height>
     </rect>
    </property>
